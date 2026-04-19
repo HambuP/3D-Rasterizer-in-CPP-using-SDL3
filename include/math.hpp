@@ -9,6 +9,18 @@ struct Vec2 {
     }
 };
 
-float edge_function(const Vec2& a, const Vec2& b) {
+struct Vec3 {
+    float x, y, z;
+
+    Vec3 operator-(const Vec3& other) const {
+        return {x - other.x, y - other.y, z - other.z};
+    }
+};
+
+struct Color {
+    int r, g, b;
+};
+
+inline float edge_function(const Vec2& a, const Vec2& b) {
     return a.x * b.y - a.y * b.x;
 }
