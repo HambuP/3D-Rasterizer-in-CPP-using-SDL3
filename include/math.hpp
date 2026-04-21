@@ -75,7 +75,7 @@ inline Mat4 rotx_matrix(float const angle) {
         1,0,0,0,
         0,cosf(angle),-sinf(angle),0,
         0,sinf(angle),cosf(angle),0,
-        0,0,1,
+        0,0,0,1,
     };
 }
 
