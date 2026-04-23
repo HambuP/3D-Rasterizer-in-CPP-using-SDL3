@@ -10,22 +10,18 @@
 #include <cstdlib>
 #include <random>
 
+#include "SDL3/SDL_render.h"
 #include "include/math.hpp"
 
 constexpr int WIDTH = 800; //usamos constexpr en vez del simple const esto lo evalua en compile time y no en runtime, así que el programa reemplaza el valor antes de ejecutarlo y no tener que buscarlo mientras corre
 constexpr int HEIGHT = 600; //el programa. Es lo más eficiente para variables de este tipo. El programa no busca el valor en memoria, pues ya está escrito
 
 struct Face {
-    int v1,v2,v3;
+    int v1,v2,v3,col;
 };
 
-void Rasterize(Vec3 const &pA, Vec3 const &pB, Vec3 const &pC, std::vector<Uint32> &framebuffer, SDL_Texture* texture, std::vector<float>& zbuffer) {
+void Rasterize(Vec3 const &pA, Vec3 const &pB, Vec3 const &pC, std::vector<Uint32> &framebuffer, SDL_Texture* texture, std::vector<float>& zbuffer, int const &col) {
     //definir bounding box
-
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(0, 10); // rango que quieras
-
-    int random_num = dist(rng);
 
 
     std::vector<Color> colors = {
@@ -38,10 +34,13 @@ void Rasterize(Vec3 const &pA, Vec3 const &pB, Vec3 const &pC, std::vector<Uint3
         {128, 128, 128},
         {255, 128, 0},
         {128, 0, 255},
-        {0, 128, 255}
+        {0, 128, 255},
+        {255,0,125},
+        {100,100,255}
+
     };
 
-    Color color = colors[random_num];
+    Color color = colors[col];
 
     int minx = static_cast<int>(std::min(pA.x, std::min(pB.x, pC.x))); // el static cast es para convertir de float a int
     int miny = static_cast<int>(std::min(pA.y, std::min(pB.y, pC.y)));
@@ -143,7 +142,7 @@ void Render(const std::vector<Vec3> &vertices, const std::vector<Face> &faces, c
         Vec3 p2 = {real2.x, real2.y, ndc2.z};
         Vec3 p3 = {real3.x, real3.y, ndc3.z};
 
-        Rasterize(p1, p2, p3, framebuffer, texture, zbuffer); //y pues ya tenemos los vertices listos para ser rasterizados
+        Rasterize(p1, p2, p3, framebuffer, texture, zbuffer, face.col); //y pues ya tenemos los vertices listos para ser rasterizados
 
     }
 }
@@ -184,18 +183,18 @@ int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el c
     };
 
     std::vector<Face> faces = {
-        {0,1,2},
-        {0,2,3},
-        {4,5,6},
-        {4,6,7},
-        {0,1,5},
-        {0,5,4},
-        {2,3,7},
-        {2,7,6},
-        {1,2,6},
-        {1,6,5},
-        {0,3,7},
-        {0,7,4}
+        {0,1,2,0},
+        {0,2,3,1},
+        {4,5,6,2},
+        {4,6,7,3},
+        {0,1,5,4},
+        {0,5,4,5},
+        {2,3,7,6},
+        {2,7,6,7},
+        {1,2,6,8},
+        {1,6,5,9},
+        {0,3,7,10},
+        {0,7,4,11}
     };
 
     while (running) {
@@ -203,17 +202,24 @@ int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el c
             if (event.type == SDL_EVENT_QUIT) running = false; //si cierras la ventana, running se vuelve falso
         }
 
+        float rx = sinf(clock() * 0.0001f) * 5.f; //usamos el clock para hacer que el cubo rote, el clock devuelve el tiempo en milisegundos desde que se inició el programa, y lo multiplicamos por 0.001 para tenerlo en segundos, y luego por 0.5 para que la rotación sea más lenta
+        float ry = cosf(clock() * 0.0001f) * 5.f;
+        float rz = sinf(clock() * 0.0001f) * 5.f;
+        float scale = 1.0f * cosf(clock() * 0.001f); //podemos usar el tiempo para hacer que el cubo escale también, pero por ahora lo dejamos fijo
+
+
         std::fill(framebuffer.begin(), framebuffer.end(), 0);//reiniciamos el framebuffer cada frame para no tener los pixeles del frame anterior, esto es importante para que no se queden los pixeles pintados de un frame a otro
         std::fill(zbuffer.begin(), zbuffer.end(), HUGE_VALF);//reiniciamos tambien el zbuffer por la misma razon
 
-        Render(vertices, faces, 0, 4, 0,
-            1.0f, {0, 0, 2}, {0, 0, -2},
+        Render(vertices, faces, rx, ry, rz,
+            scale, {0, 0, 2}, {0, 0, -2},
             {0, 0, 0},
             framebuffer, texture, zbuffer);
 
         //Rasterize({200, 100, 0.1f}, {600, 300, 0.8f}, {200, 500, 0.1f}, framebuffer, texture, zbuffer, {255, 0, 0});
         //Rasterize({600, 100, 0.9f}, {200, 300, 0.3f}, {600, 500, 0.1f}, framebuffer, texture, zbuffer, {0, 0, 255});
 
+        SDL_RenderClear(renderer); // esto limpia el renderer, para que no se queden los pixeles del frame anterior
         SDL_RenderTexture(renderer, texture, nullptr, nullptr); // esto dibuja la textura en el renderer, con nullptr para el source y el destination, lo que significa que se va a dibujar toda la textura en toda la ventana
         SDL_RenderPresent(renderer); // esto presenta el frame actual en pantalla
     }

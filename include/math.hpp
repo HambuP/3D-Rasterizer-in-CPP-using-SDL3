@@ -136,7 +136,7 @@ inline Mat4 projection_matrix(float const fov, float const aspect, float const n
         focal_l/aspect,0,0,0,          // para poder poner ndc de z necesitamos un z clip que nos funcione, queremos que near plane sea -1 y far sea 1, de esta manera logramos eso
         0,focal_l, 0, 0,                // y al final, claro, mandamos la valor de z a w para no perderla y poder hacer el perspective divide justo despues
         0,0,(near+far)/(far-near), 2*(near*far)/(near-far),
-        0,0,1,0
+        0,0,-1,0
     };
 
 }
