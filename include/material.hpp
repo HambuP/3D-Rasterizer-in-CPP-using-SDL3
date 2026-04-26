@@ -14,37 +14,52 @@ public:
 
     std::string nombre;
     std::vector <Col> texture;
+    uint32_t width, height;
 
-    explicit Material(const std::string &nombre, const std::string &mtl) : nombre(nombre) {
+    explicit Material(const std::string &nombre, const std::string &mtl, const std::string &base) : nombre(nombre) {
 
         std::string direccion; //inicializamos la direccion de la imagen del material
 
         std::ifstream file(mtl);
 
+        if (!file) {
+            std::cout << "ERROR: no se pudo abrir mtl: " << mtl << "\n";
+            return;
+        }
         if (file) {
 
             std::string line;
+            std::string material;
 
             while(std::getline(file,line)) {//vamos linea por linea
 
                 std::istringstream iss(line);
                 std::string word;
-                std::string material;
 
                 iss >> word;
 
                 if (word == "newmtl") {
 
+
+                    std::cout << "Entramos a newmtl \n";
                     iss >> word;
+                    std::cout << "el nombre del material es: " << word << "\n";
                     material = word;
 
                 }
 
                 if (word == "map_Kd") {
 
+                    std::cout << "entramos a map_kd \n";
+
                     iss >> word;
+
+                    std::cout << "el nombre del material es: " << nombre << "\n";
+                    std::cout << "el material que encontramos es: " <<  material<< "\n";
+
                     if (nombre == material) {
 
+                        std::cout << "encontramos la direccion \n";
                         direccion = word;
 
                     }
@@ -55,7 +70,14 @@ public:
 
         file.close();
 
-        std::ifstream textura(direccion,std::ifstream::binary);//abrimos la textura en modo binario, ya que es bmp
+        std::cout << "esta es la direccion: " << base +direccion << "\n";
+
+        std::ifstream textura(base + direccion,std::ifstream::binary);//abrimos la textura en modo binario, ya que es bmp
+
+        if (!textura) {
+            std::cout << "ERROR: no se pudo abrir textura: " << direccion << "\n";
+            return;
+        }
 
         if (textura) { //si la textura se abre
 
@@ -79,13 +101,13 @@ public:
                 (static_cast<uint8_t>(buffer[12]) << 16) |
                 (static_cast<uint8_t>(buffer[13]) << 24);
 
-            uint32_t width =
+            width =
                 static_cast<uint8_t>(buffer[18]) |
                 (static_cast<uint8_t>(buffer[19]) << 8) |
                 (static_cast<uint8_t>(buffer[20]) << 16) |
                 (static_cast<uint8_t>(buffer[21]) << 24);
 
-            uint32_t height =
+            height =
                 static_cast<uint8_t>(buffer[22]) |
                 (static_cast<uint8_t>(buffer[23]) << 8) |
                 (static_cast<uint8_t>(buffer[24]) << 16) |

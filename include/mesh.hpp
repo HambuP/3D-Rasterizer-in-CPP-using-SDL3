@@ -16,6 +16,14 @@ struct Face {
 
 };
 
+struct Transform {
+
+    Vec3 rotation = {0,0,0};
+    Vec3 translation = {0,0,0};
+    float scale = 1;
+
+};
+
 class Mesh {
 
 public:
@@ -25,32 +33,46 @@ public:
 
     std::vector<Face> faces;
     std::vector<Material> materials;
+    Transform transforms;
 
     void load_obj(std::string filename) { //el parser de obj
 
+        std::cout<<"load obj filename : "<<filename<<std::endl;
         std::ifstream objeto(filename); //abrimos el archivo
+        if (!objeto) {
+            std::cout << "ERROR: no se pudo abrir el archivo\n";
+            return;
+        }
+        std::cout << "archivo abierto correctamente\n";
+
         std::string base = std::filesystem::path(filename).parent_path().string() + "/"; //esto es para obtener la ruta del archivo,
                                                             //para luego usarla para cargar el mtl, que se encuentra en la misma carpeta
+        std::string mtl;
 
         if (objeto) { // si el archivo esta abierto
             std::string line;
+            std::string material; //inicializamos el material
 
             while(std::getline(objeto,line)){ //vamos linea por linea
 
                 std::istringstream iss(line); //inicializamos el istringstream como la primera linea
 
-                std::string material; //inicializamos el material
                 std::string word; //inicializamos el word, que es una variable que va a guardar e iss
                 iss >> word; //inicializamos las primera "palabra" que es simplemente el primer texto antes del primer espacio a word
+
+                std::cout << "palabra: '" << word << "'\n";
 
                 if (word == "mtllib"){ //si al leer, nos encontramos esto pues tenemos el nombre del mtl
 
                     iss >> word;
-                    std::string mtl = word;
+                    mtl = word;
 
+                    std::cout << "el mtl es esto: " <<mtl << std::endl;
                 }
 
                 if (word == "v"){ //si al leer, nos encontramos una "v" rellenamos la lista de vertices
+
+                    std::cout << "entramos a vertices \n";
 
                     iss >> word; //word se convierte en la siguiente "palabra" que es simplemente el siguiente string entre espacios
                     float v1 = std::stof(word); //lo convertimos a float, cuidado con usar static cast, de string a float no existe
@@ -65,6 +87,8 @@ public:
 
                 if (word == "vn"){//si al leer, nos encontramos una "vn" rellenamos la lista de normales
 
+                    std::cout << "entramos a vn \n";
+
                     iss >> word;
                     float v1 = std::stof(word);
                     iss >> word;
@@ -78,6 +102,8 @@ public:
 
                 if (word == "vt"){//si al leer, nos encontramos una "vt" rellenamos la lista de coordenadas de textura
 
+                    std::cout << "entramos a vt \n";
+
                     iss >> word;
                     float v1 = std::stof(word);
                     iss >> word;
@@ -87,15 +113,21 @@ public:
                 }
 
                 if (word == "usemtl"){
-                    std::string mtl;
+
+                    std::cout << "entramos a usemtl \n";
 
                     iss >> word;
                     material = word;
 
-                    materials.push_back(Material(material,base + mtl)); //creamos el material y lo añadimos a la lista de materiales
+                    std::cout << "ruta de mtl: " << base + mtl << std::endl;
+
+                    materials.push_back(Material(material,base + mtl,base)); //creamos el material y lo añadimos a la lista de materiales
                 }
 
                 if (word == "f"){
+
+                    std::cout << "entramos a faces \n";
+
                     Face face;
                     face.name = material; //nombramos el face con el material que le corresponde
 
@@ -108,12 +140,14 @@ public:
                         face.v_indices.push_back(std::stoi(index));
 
                         std::getline(iss2, index, '/');
-                        face.n_indices.push_back(std::stoi(index));
-
-                        std::getline(iss2, index, '/');
                         face.uv_indices.push_back(std::stoi(index));
 
+                        std::getline(iss2, index, '/');
+                        face.n_indices.push_back(std::stoi(index));
+
                     }
+
+                    faces.push_back(face); //mandamos la cara a la lista de carasf
                 }
 
             }
@@ -122,4 +156,14 @@ public:
         objeto.close();
 
     }
+    Material get_material(const std::string &nombre) const {
+        for (const auto& material : materials) { //buscar el material que tenga el mismo nombre
+                if (material.nombre == nombre) {
+                    return material;
+                }
+            }
+            return Material("", "",""); // Si no se encuentra el material, se devuelve un material vacío
+    }
+
+
 };
