@@ -148,9 +148,19 @@ public:
                 //auto& [ver1,ver2,ver3] = face; //esto es una forma de desempaquetar la estructura de face
                 //es mucho más limpio y épico
 
+
                 Vec4 ver1_clip = MVP * Vec4{ver1.x, ver1.y, ver1.z, 1.0f}; //transformamos cada vertice a clip space
                 Vec4 ver2_clip = MVP * Vec4{ver2.x, ver2.y, ver2.z, 1.0f};
                 Vec4 ver3_clip = MVP * Vec4{ver3.x, ver3.y, ver3.z, 1.0f};
+
+                std::cout << "ver1_clip.z = " << ver1_clip.z << std::endl;
+                std::cout << "ver1_clip.w = " << ver1_clip.w << std::endl;
+
+                //frustum culling
+                if (ver1_clip.x < -ver1_clip.w && ver2_clip.x < -ver2_clip.w && ver3_clip.x < -ver3_clip.w) continue; //si los tres vertices estan a la izquierda del frustum, no renderizar
+                if (ver1_clip.x > ver1_clip.w && ver2_clip.x > ver2_clip.w && ver3_clip.x > ver3_clip.w) continue; //si los tres vertices estan a la derecha del frustum, no renderizar
+                if (ver1_clip.y < -ver1_clip.w && ver2_clip.y < -ver2_clip.w && ver3_clip.y < -ver3_clip.w) continue; //si los tres vertices estan abajo del frustum, no renderizar
+                if (ver1_clip.y > ver1_clip.w && ver2_clip.y > ver2_clip.w && ver3_clip.y > ver3_clip.w) continue; //si los tres vertices estan arriba del frustum, no renderizar
 
                 Vec3 ndc1 = {ver1_clip.x / ver1_clip.w, ver1_clip.y / ver1_clip.w, ver1_clip.z / ver1_clip.w}; //transformamos a NDC dividiendo por w
                 Vec3 ndc2 = {ver2_clip.x / ver2_clip.w, ver2_clip.y / ver2_clip.w, ver2_clip.z / ver2_clip.w};
@@ -160,13 +170,13 @@ public:
                 Vec2 real2 = {(1 + ndc2.x) * (WIDTH -1)/ 2, (1 - ndc2.y) * (HEIGHT -1)/ 2}; //además, restamos por 1 ya que obviamente la pantalla no va a hasta height sino hasta height-1
                 Vec2 real3 = {(1 + ndc3.x) * (WIDTH -1)/ 2, (1 - ndc3.y) * (HEIGHT -1)/ 2}; //y en y restamos ya que en el ndc 1 es arriba, pero en la screen space 0 es arriba
 
+                //backface culling
+                float area = edge_function(real2-real1, real3-real1);//edge function, si un vector esta a la derecha del otro, te indica el winding
+                if (area <= 0) continue;
+
                 Vec3 p1 = {real1.x, real1.y, ver1_clip.w}; //y pues ya tenemos los vertices listos para ser rasterizados, con su profundidad en z
                 Vec3 p2 = {real2.x, real2.y, ver2_clip.w}; //y pues mando el w que teníamos antes, porque es el que se usa para interpolar por profundidad
                 Vec3 p3 = {real3.x, real3.y, ver3_clip.w};// no mandamos ndc.z porque este no contiene informacion de profundidad lineal real, que es la que necesitamos
-
-                std::cout << "p1: " << p1.x << "\n";
-                std::cout << "p2: " << p2.x << "\n";
-                std::cout << "p3: " << p3.x << "\n";
 
                 Rasterize(p1, p2, p3, uv1, uv2, uv3,mat.texture,mat.width,mat.height); //y pues ya tenemos los vertices listos para ser rasterizados
 

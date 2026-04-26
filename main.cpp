@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el c
         cubo_minecraft.transforms.rotation.x = sinf(clock() * 0.0001f) * 5.f; //usamos el clock para hacer que el cubo rote, el clock devuelve el tiempo en milisegundos desde que se inició el programa, y lo multiplicamos por 0.001 para tenerlo en segundos, y luego por 0.5 para que la rotación sea más lenta
         cubo_minecraft.transforms.rotation.y  = cosf(clock() * 0.0001f) * 5.f;
         cubo_minecraft.transforms.rotation.z  = sinf(clock() * 0.0001f) * 5.f;
-        cubo_minecraft.transforms.scale = 1.0f * cosf(clock() * 0.001f); //podemos usar el tiempo para hacer que el cubo escale también, pero por ahora lo dejamos fijo
+        //cubo_minecraft.transforms.scale = 1.0f * cosf(clock() * 0.001f); //podemos usar el tiempo para hacer que el cubo escale también, pero por ahora lo dejamos fijo
 
         SDL_RenderClear(renderer); // esto limpia el renderer, para que no se queden los pixeles del frame anterior
 
