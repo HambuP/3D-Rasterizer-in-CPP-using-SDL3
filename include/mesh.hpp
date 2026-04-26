@@ -143,13 +143,13 @@ public:
         objeto.close();
 
     }
-    Material get_material(const std::string &nombre) const {
+    const Material* get_material(const std::string &nombre) const {
         for (const auto& material : materials) { //buscar el material que tenga el mismo nombre
                 if (material.nombre == nombre) {
-                    return material;
+                    return &material;
                 }
             }
-            return Material("", "",""); // Si no se encuentra el material, se devuelve un material vacío
+            return nullptr; // Si no se encuentra el material, se devuelve un material vacío
     }
 
 

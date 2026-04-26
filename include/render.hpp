@@ -85,9 +85,16 @@ public:
                         continue; //si el pixel que queremos pintar es más profundo que el que ya está en el zbuffer, no lo pintamos
                     }
 
+                    if (colores.empty() || tex_width == 0 || tex_height == 0) continue; //si no hay textura, o la textura tiene ancho o alto 0, no pintamos nada, esto es para evitar errores de división por cero o acceso a memoria inválida
+
                     int pix_x = static_cast<int>(uv_coor.x * (tex_width-1)); //calculamos la coordenada x del pixel en la textura, multiplicando la coordenada uv por el ancho de la textura
                     int pix_y = static_cast<int>((1-uv_coor.y) * (tex_height-1)); //calculamos la coordenada y del pixel en la textura, multiplicando la coordenada uv por el alto de la textura,
                                                                                 //  y restando por 1 porque en las coordenadas uv, 0 es abajo, pero en la textura, 0 es arriba
+
+                    if (pix_x < 0 || pix_x >= static_cast<int>(tex_width) ||
+                    pix_y < 0 || pix_y >= static_cast<int>(tex_height)) {
+                                        continue;
+                    } //esto es para asegurarnos de que las coordenadas del pixel en la textura estén dentro de los límites de la textura, si no, no pintamos nada, esto es para evitar errores de acceso a memoria inválida
 
                     Col color = colores[pix_y * tex_width + pix_x]; //obtenemos el color del pixel en la textura, usando las coordenadas que acabamos de calcular
 
@@ -121,9 +128,9 @@ public:
         const float rotz = mesh.transforms.rotation.z; //obtenemos la rotacion en z del mesh
         const float scale = mesh.transforms.scale; //obtenemos la escala del mesh
 
-        const std::vector<Face> faces = mesh.faces; //obtenemos las caras
-        const std::vector<Vec3> vertices = mesh.vertices; //obtenemos los vertices
-        const std::vector<Vec2> uvs = mesh.uvs; //obtenemos los uvs
+        const std::vector<Face>& faces = mesh.faces; //obtenemos las caras
+        const std::vector<Vec3>& vertices = mesh.vertices; //obtenemos los vertices
+        const std::vector<Vec2>& uvs = mesh.uvs; //obtenemos los uvs
 
         const Mat4 MVP = projection_matrix(90,static_cast<float>(WIDTH)/HEIGHT,0.1,100.0) * lookAt_matrix(eye, center) * move_matrix(move.x, move.y, move.z) * rotz_matrix(rotz)
                         * roty_matrix(roty) * rotx_matrix(rotx) * scale_matrix(scale); //la epica y superpoderosa matriz MVP, que transforma cada vertice
@@ -133,7 +140,7 @@ public:
         for (const auto& face : faces) {
 
             const std::string nom_mat = face.name; //obtenemos el nombre del material
-            Material mat = mesh.get_material(nom_mat); //obtenemos el material usando el nombre
+            const Material* mat = mesh.get_material(nom_mat); //obtenemos el material usando el nombre, con puntero, para no copiarlo cada frame
 
             for (int i=1; i < face.v_indices.size()-1;i++){ //esto es para hacer triangulación de caras con más de 3 vertices, si la cara tiene 4 vertices, va a hacer un triangulo con los vertices 0,1,2 y otro triangulo con los vertices 0,2,3
 
@@ -152,9 +159,6 @@ public:
                 Vec4 ver1_clip = MVP * Vec4{ver1.x, ver1.y, ver1.z, 1.0f}; //transformamos cada vertice a clip space
                 Vec4 ver2_clip = MVP * Vec4{ver2.x, ver2.y, ver2.z, 1.0f};
                 Vec4 ver3_clip = MVP * Vec4{ver3.x, ver3.y, ver3.z, 1.0f};
-
-                std::cout << "ver1_clip.z = " << ver1_clip.z << std::endl;
-                std::cout << "ver1_clip.w = " << ver1_clip.w << std::endl;
 
                 //frustum culling
                 if (ver1_clip.x < -ver1_clip.w && ver2_clip.x < -ver2_clip.w && ver3_clip.x < -ver3_clip.w) continue; //si los tres vertices estan a la izquierda del frustum, no renderizar
@@ -178,8 +182,13 @@ public:
                 Vec3 p2 = {real2.x, real2.y, ver2_clip.w}; //y pues mando el w que teníamos antes, porque es el que se usa para interpolar por profundidad
                 Vec3 p3 = {real3.x, real3.y, ver3_clip.w};// no mandamos ndc.z porque este no contiene informacion de profundidad lineal real, que es la que necesitamos
 
-                Rasterize(p1, p2, p3, uv1, uv2, uv3,mat.texture,mat.width,mat.height); //y pues ya tenemos los vertices listos para ser rasterizados
-
+                static const std::vector<Col> empty_texture; //esto sirve para cuando no hay textura mandar esto y no matar el codigo con el nullptr
+                Rasterize(
+                    p1, p2, p3, uv1, uv2, uv3,
+                    mat ? mat->texture : empty_texture,
+                    mat ? mat->width : 0,
+                    mat ? mat->height : 0
+                );
             }
         }
 
