@@ -109,14 +109,6 @@ public:
 
     void render_obj(Mesh const &mesh) {
 
-        std::cout << "materiales: " << mesh.materials.size() << "\n";
-        for (auto& mat : mesh.materials) {
-            std::cout << "material: " << mat.nombre << "\n";
-            std::cout << "textura width: " << mat.width << "\n";
-            std::cout << "textura height: " << mat.height << "\n";
-            std::cout << "pixeles: " << mat.texture.size() << "\n";
-        }
-
         std::fill(framebuffer.begin(), framebuffer.end(), 0);//reiniciamos el framebuffer cada frame para no tener los pixeles del frame anterior, esto es importante para que no se queden los pixeles pintados de un frame a otro
         std::fill(zbuffer.begin(), zbuffer.end(), HUGE_VALF);//reiniciamos tambien el zbuffer por la misma razon
 
@@ -138,11 +130,7 @@ public:
             //a clip space mandando su profundidad con w listo para transformar a NDC y luego a screen space
             //otro detallito es que para hacer division entre dos enteros, toca transformar uno a float antes de hacerlo
 
-        std::cout << "numero de caras: " << faces.size() << "\n";
-
         for (const auto& face : faces) {
-
-            std::cout << "entramos al loop de las caras del mesh: \n";
 
             const std::string nom_mat = face.name; //obtenemos el nombre del material
             Material mat = mesh.get_material(nom_mat); //obtenemos el material usando el nombre
@@ -184,13 +172,9 @@ public:
 
             }
         }
-        int nonzero = 0;
-        for (auto& p : framebuffer) if (p != 0) nonzero++;
-        std::cout << "pixeles pintados: " << nonzero << "\n";
 
         SDL_UpdateTexture(texture, nullptr, framebuffer.data(), WIDTH * sizeof(Uint32)); //esto actualiza la textura con la info del framebuffer
         SDL_RenderTexture(renderer, texture, nullptr, nullptr); // esto dibuja la textura en el renderer, con nullptr para el source y el destination, lo que significa que se va a dibujar toda la textura en toda la ventana
-        std::cout << "Llegamos al uptadetexture y render texture gucci \n";
 
     }
 

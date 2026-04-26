@@ -60,19 +60,13 @@ public:
                 std::string word; //inicializamos el word, que es una variable que va a guardar e iss
                 iss >> word; //inicializamos las primera "palabra" que es simplemente el primer texto antes del primer espacio a word
 
-                std::cout << "palabra: '" << word << "'\n";
-
                 if (word == "mtllib"){ //si al leer, nos encontramos esto pues tenemos el nombre del mtl
 
                     iss >> word;
                     mtl = word;
-
-                    std::cout << "el mtl es esto: " <<mtl << std::endl;
                 }
 
                 if (word == "v"){ //si al leer, nos encontramos una "v" rellenamos la lista de vertices
-
-                    std::cout << "entramos a vertices \n";
 
                     iss >> word; //word se convierte en la siguiente "palabra" que es simplemente el siguiente string entre espacios
                     float v1 = std::stof(word); //lo convertimos a float, cuidado con usar static cast, de string a float no existe
@@ -87,7 +81,6 @@ public:
 
                 if (word == "vn"){//si al leer, nos encontramos una "vn" rellenamos la lista de normales
 
-                    std::cout << "entramos a vn \n";
 
                     iss >> word;
                     float v1 = std::stof(word);
@@ -102,7 +95,6 @@ public:
 
                 if (word == "vt"){//si al leer, nos encontramos una "vt" rellenamos la lista de coordenadas de textura
 
-                    std::cout << "entramos a vt \n";
 
                     iss >> word;
                     float v1 = std::stof(word);
@@ -114,19 +106,14 @@ public:
 
                 if (word == "usemtl"){
 
-                    std::cout << "entramos a usemtl \n";
 
                     iss >> word;
                     material = word;
-
-                    std::cout << "ruta de mtl: " << base + mtl << std::endl;
 
                     materials.push_back(Material(material,base + mtl,base)); //creamos el material y lo añadimos a la lista de materiales
                 }
 
                 if (word == "f"){
-
-                    std::cout << "entramos a faces \n";
 
                     Face face;
                     face.name = material; //nombramos el face con el material que le corresponde

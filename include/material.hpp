@@ -40,26 +40,17 @@ public:
 
                 if (word == "newmtl") {
 
-
-                    std::cout << "Entramos a newmtl \n";
                     iss >> word;
-                    std::cout << "el nombre del material es: " << word << "\n";
                     material = word;
 
                 }
 
                 if (word == "map_Kd") {
 
-                    std::cout << "entramos a map_kd \n";
-
                     iss >> word;
-
-                    std::cout << "el nombre del material es: " << nombre << "\n";
-                    std::cout << "el material que encontramos es: " <<  material<< "\n";
 
                     if (nombre == material) {
 
-                        std::cout << "encontramos la direccion \n";
                         direccion = word;
 
                     }
@@ -69,8 +60,6 @@ public:
         }
 
         file.close();
-
-        std::cout << "esta es la direccion: " << base +direccion << "\n";
 
         std::ifstream textura(base + direccion,std::ifstream::binary);//abrimos la textura en modo binario, ya que es bmp
 
