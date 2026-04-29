@@ -8,6 +8,10 @@ constexpr int HEIGHT = 600; //el programa. Es lo más eficiente para variables d
 int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el char* argv (array con strings de argumentos)
                                     //son los argumentos que le mandamos al programa y SDL3 por convención lo requiere, aunque no los vayamos
                                     //a usar, pero es necesario para que el programa funcione correctamente
+    //coso para fps
+    Uint64 startTicks = SDL_GetTicks();
+    int frameCount = 0;
+    float fps = 0.0f;
 
 
     SDL_Init(SDL_INIT_VIDEO); // Entonces esto es para inicializar SDL
@@ -38,13 +42,31 @@ int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el c
         cubo_minecraft.transforms.rotation.x = sinf(clock() * 0.0001f) * 5.f; //usamos el clock para hacer que el cubo rote, el clock devuelve el tiempo en milisegundos desde que se inició el programa, y lo multiplicamos por 0.001 para tenerlo en segundos, y luego por 0.5 para que la rotación sea más lenta
         cubo_minecraft.transforms.rotation.y  = cosf(clock() * 0.0001f) * 5.f;
         cubo_minecraft.transforms.rotation.z  = sinf(clock() * 0.0001f) * 5.f;
-        //cubo_minecraft.transforms.scale = 1.0f * cosf(clock() * 0.001f)+1; //podemos usar el tiempo para hacer que el cubo escale también, pero por ahora lo dejamos fijo
+        cubo_minecraft.transforms.scale = 1.0f * cosf(clock() * 0.001f)+1; //podemos usar el tiempo para hacer que el cubo escale también, pero por ahora lo dejamos fijo
 
         SDL_RenderClear(renderer); // esto limpia el renderer, para que no se queden los pixeles del frame anterior
 
         renderizador.render_obj(cubo_minecraft); //renderizamos el cubo, esto va a llenar el framebuffer con los pixeles que corresponden al cubo en su posición actual
 
         SDL_RenderPresent(renderer); // esto presenta el frame actual en pantalla
+
+        frameCount++;
+        Uint32 currentTicks = SDL_GetTicks();
+
+        if (currentTicks - startTicks > 1000) {
+
+            fps = frameCount/((currentTicks - startTicks)/1000);
+
+            //Mostrar en ventana
+            std::string title = "FPS: " + std::to_string(static_cast<int>(fps));
+            SDL_SetWindowTitle(window, title.c_str());
+
+            //Resetear para siguiente segundo
+            startTicks = currentTicks;
+            frameCount = 0;
+
+        }
+
     }
 
     SDL_DestroyRenderer(renderer); // en c++ toca liberar la memoria manualmente, así se hace

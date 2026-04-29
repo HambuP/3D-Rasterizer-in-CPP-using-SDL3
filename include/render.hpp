@@ -5,7 +5,23 @@
 #include <SDL3/SDL.h>
 #include "mesh.hpp"
 #include <complex>
+#include <thread>
+
 #include "material.hpp"
+
+
+struct tuple {
+    int x,y;
+};
+
+struct Triangulo {
+
+    Vec3 p1,p2,p3;
+    Vec2 uv1,uv2,uv3;
+    const std::vector<Col>* texture;
+    uint32_t tex_width,tex_height;
+
+};
 
 class Render {
 public:
@@ -16,105 +32,142 @@ public:
     std::vector<Uint32> framebuffer; //creamos un framebuffer, que es un array de pixeles, con el mismo tamaño que la ventana, y lo inicializamos con 0
     std::vector<float> zbuffer; //creamos un zbuffer, que es un array de floats, y lo inicializamos con el valor más grande posible
 
+    unsigned int num_cores = std::thread::hardware_concurrency(); //obtenemos el número de núcleos del procesador para dividir el trabajo entre ellos
+
+    std::vector<tuple> threads;
+
+
     Render(SDL_Renderer* renderer, const int width, const int height) : renderer(renderer), WIDTH(width), HEIGHT(height),
                                                 framebuffer(width * height, 0), zbuffer(width * height, HUGE_VALF) {
+
+        int lines_per_t = height / num_cores; //calculamos el numero de filas para cada thread
+        int lines_rest = height % num_cores; //calculamos el resto que le vamos a dar al ultimo thread
 
         texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
                                             WIDTH,HEIGHT); //creamos la textura, que es lo que nos va a servir para pintar en el renderer
 
-    }
+        for (int i = 0; i < num_cores; i++) {
 
-    void Rasterize(Vec3 const &pA, Vec3 const &pB, Vec3 const &pC, Vec2 const &uvA, Vec2 const &uvB, Vec2 const &uvC, std::vector<Col> const &colores, const
-        uint32_t &tex_width, const uint32_t &tex_height) {
-        //definir bounding box
-
-        int minx = static_cast<int>(std::min(pA.x, std::min(pB.x, pC.x))); // el static cast es para convertir de float a int
-        int miny = static_cast<int>(std::min(pA.y, std::min(pB.y, pC.y)));
-        int maxx = static_cast<int>(std::max(pA.x, std::max(pB.x, pC.x)));
-        int maxy = static_cast<int>(std::max(pA.y, std::max(pB.y, pC.y)));
-
-        minx = std::max(minx, 0); //asegurarse de mantenerse en pantalla of course
-        miny = std::max(miny, 0);
-        maxx = std::min(maxx, WIDTH - 1);
-        maxy = std::min(maxy, HEIGHT - 1);
-
-        //para todos esos pixeleles, usando edge function para determinar si estan o no, pues ponerlos
-
-        const Vec2 pA_2d = {pA.x, pA.y};
-        const Vec2 pB_2d = {pB.x, pB.y};
-        const Vec2 pC_2d = {pC.x, pC.y};
-
-        const Vec2 ladoAB = pB_2d - pA_2d;
-        const Vec2 ladoBC = pC_2d - pB_2d;
-        const Vec2 ladoCA = pA_2d - pC_2d;
-
-        const float w1 = pA.z;
-        const float w2 = pB.z;
-        const float w3 = pC.z;
-
-        for (int i = minx; i <= maxx; i++) {
-            for (int j = miny; j <= maxy; j++) {
-
-                Vec2 p = {static_cast<float>(i), static_cast<float>(j)};
-
-                //definir si esta o no esta en triangulo
-
-                float const edge1 = edge_function(p - pA_2d,ladoAB); //usamos para interpolar el punto c
-                float const edge2 = edge_function(p - pB_2d,ladoBC); //usamos para interpolar el punto a
-                float const edge3 = edge_function(p - pC_2d,ladoCA); //usamos para interpolar el punto b
-
-                if ((edge1 >= 0 && edge2 >= 0 && edge3 >= 0)||(edge1 <= 0 && edge2 <= 0 && edge3 <= 0)) {
-                    //pintar pixel
-
-                    float const area_total = edge1 + edge2 + edge3;
-
-                    float const e1_norm = edge1 / area_total;
-                    float const e2_norm = edge2 / area_total;
-                    float const e3_norm = edge3 / area_total;
-
-                    float depth = e1_norm*(1/w3) + e2_norm*(1/w1) + e3_norm*(1/w2); //interpolamos la profundidad con correcta profundidad
-                    depth = 1/depth;
-
-                    Vec2 uv_coor = uvC*e1_norm*(1/w3) + uvA*e2_norm*(1/w1) + uvB*e3_norm*(1/w2); //interpolamos las coordenadas uv con interpolacion correcta por profundidad
-
-                    uv_coor = uv_coor* depth; //volvemos a multiplicar por depth para que nos de bien
-
-                    if (depth < zbuffer[j * WIDTH + i]) {
-                        zbuffer[j * WIDTH + i] = depth;
-                    } else {
-                        continue; //si el pixel que queremos pintar es más profundo que el que ya está en el zbuffer, no lo pintamos
-                    }
-
-                    if (colores.empty() || tex_width == 0 || tex_height == 0) continue; //si no hay textura, o la textura tiene ancho o alto 0, no pintamos nada, esto es para evitar errores de división por cero o acceso a memoria inválida
-
-                    int pix_x = static_cast<int>(uv_coor.x * (tex_width-1)); //calculamos la coordenada x del pixel en la textura, multiplicando la coordenada uv por el ancho de la textura
-                    int pix_y = static_cast<int>((1-uv_coor.y) * (tex_height-1)); //calculamos la coordenada y del pixel en la textura, multiplicando la coordenada uv por el alto de la textura,
-                                                                                //  y restando por 1 porque en las coordenadas uv, 0 es abajo, pero en la textura, 0 es arriba
-
-                    if (pix_x < 0 || pix_x >= static_cast<int>(tex_width) ||
-                    pix_y < 0 || pix_y >= static_cast<int>(tex_height)) {
-                                        continue;
-                    } //esto es para asegurarnos de que las coordenadas del pixel en la textura estén dentro de los límites de la textura, si no, no pintamos nada, esto es para evitar errores de acceso a memoria inválida
-
-                    Col color = colores[pix_y * tex_width + pix_x]; //obtenemos el color del pixel en la textura, usando las coordenadas que acabamos de calcular
-
-
-                    const Uint32 colorin = (255 << 24) | (color.r << 16) | (color.g << 8) | color.b; //esto es bit manipulation Uint tiene 32 bits, 8 para A,R,G,B, lo que hacemos es mandar 255 con << que es un shift left, osea, esos 8 bits,
-                                                                //se van a mover 24 posiciones a la izquierda, osea, van a quedar en la parte de A, luego r se mueve 16 posiciones, g se mueve 8 posiciones
-                                                                //y b se queda en la parte de B, luego hacemos un OR binario que es cada palito para juntar todito en un solo Uint32
-
-                    framebuffer[j * WIDTH + i] = colorin; //esto es para pintar el pixel, el framebuffer es un array de pixeles, y cada pixel es un Uint32, que es un entero de 32 bits, y cada bit representa un canal de color (RGBA)
-                }
-
-            }
+            threads.push_back({i*lines_per_t,(i+1)*lines_per_t - 1}); // guardamos en esta epica lista los valores para cada core
 
         }
 
-
+        threads.back().y += lines_rest; //le ponemos al ultimo thread lo que falte
 
     }
 
+
+    void Rasterize_threads(const std::vector<Triangulo>& triangulos , const int &miny_t, const int &maxy_t) {
+
+        //Vec3 const &pA, Vec3 const &pB, Vec3 const &pC, Vec2 const &uvA, Vec2 const &uvB, Vec2 const &uvC, std::vector<Col> const &colores, const
+        //uint32_t &tex_width, const uint32_t &tex_height, const int &miny_t, const int &maxy_t
+
+        for (auto& tri : triangulos) {
+
+            Vec3 pA = tri.p1;
+            Vec3 pB = tri.p2;
+            Vec3 pC = tri.p3;
+
+            Vec2 uvA = tri.uv1;
+            Vec2 uvB = tri.uv2;
+            Vec2 uvC = tri.uv3;
+
+            const std::vector<Col> &colores = *tri.texture;
+
+            const uint32_t tex_width = tri.tex_width;
+            const uint32_t tex_height = tri.tex_height;
+
+            int minx = static_cast<int>(std::min(pA.x, std::min(pB.x, pC.x))); // el static cast es para convertir de float a int
+            int miny = static_cast<int>(std::min(pA.y, std::min(pB.y, pC.y)));
+            int maxx = static_cast<int>(std::max(pA.x, std::max(pB.x, pC.x)));
+            int maxy = static_cast<int>(std::max(pA.y, std::max(pB.y, pC.y)));
+
+            minx = std::max(minx, 0); //asegurarse de mantenerse en pantalla of course
+            miny = std::max(miny, 0);
+            maxx = std::min(maxx, WIDTH - 1);
+            maxy = std::min(maxy, HEIGHT - 1);
+
+            //definir el espacio para el thread
+            miny = std::max(miny,miny_t);
+            maxy = std::min(maxy,maxy_t);
+
+            //para todos esos pixeleles, usando edge function para determinar si estan o no, pues ponerlos
+
+            const Vec2 pA_2d = {pA.x, pA.y};
+            const Vec2 pB_2d = {pB.x, pB.y};
+            const Vec2 pC_2d = {pC.x, pC.y};
+
+            const Vec2 ladoAB = pB_2d - pA_2d;
+            const Vec2 ladoBC = pC_2d - pB_2d;
+            const Vec2 ladoCA = pA_2d - pC_2d;
+
+            const float w1 = pA.z;
+            const float w2 = pB.z;
+            const float w3 = pC.z;
+
+            for (int i = minx; i <= maxx; i++) {
+                for (int j = miny; j <= maxy; j++) {
+                    Vec2 p = {static_cast<float>(i), static_cast<float>(j)};
+
+                    //definir si esta o no esta en triangulo
+
+                    float const edge1 = edge_function(p - pA_2d,ladoAB); //usamos para interpolar el punto c
+                    float const edge2 = edge_function(p - pB_2d,ladoBC); //usamos para interpolar el punto a
+                    float const edge3 = edge_function(p - pC_2d,ladoCA); //usamos para interpolar el punto b
+
+                    if ((edge1 >= 0 && edge2 >= 0 && edge3 >= 0)||(edge1 <= 0 && edge2 <= 0 && edge3 <= 0)) {
+                        //pintar pixel
+
+                        float const area_total = edge1 + edge2 + edge3;
+
+                        float const e1_norm = edge1 / area_total;
+                        float const e2_norm = edge2 / area_total;
+                        float const e3_norm = edge3 / area_total;
+
+                        float depth = e1_norm*(1/w3) + e2_norm*(1/w1) + e3_norm*(1/w2); //interpolamos la profundidad con correcta profundidad
+                        depth = 1/depth;
+
+                        Vec2 uv_coor = uvC*e1_norm*(1/w3) + uvA*e2_norm*(1/w1) + uvB*e3_norm*(1/w2); //interpolamos las coordenadas uv con interpolacion correcta por profundidad
+
+                        uv_coor = uv_coor* depth; //volvemos a multiplicar por depth para que nos de bien
+
+                        if (depth < zbuffer[j * WIDTH + i]) {
+                            zbuffer[j * WIDTH + i] = depth;
+                        } else {
+                            continue; //si el pixel que queremos pintar es más profundo que el que ya está en el zbuffer, no lo pintamos
+                        }
+
+                        if (colores.empty() || tex_width == 0 || tex_height == 0) continue; //si no hay textura, o la textura tiene ancho o alto 0, no pintamos nada, esto es para evitar errores de división por cero o acceso a memoria inválida
+
+                        int pix_x = static_cast<int>(uv_coor.x * (tex_width-1)); //calculamos la coordenada x del pixel en la textura, multiplicando la coordenada uv por el ancho de la textura
+                        int pix_y = static_cast<int>((1-uv_coor.y) * (tex_height-1)); //calculamos la coordenada y del pixel en la textura, multiplicando la coordenada uv por el alto de la textura,
+                        //  y restando por 1 porque en las coordenadas uv, 0 es abajo, pero en la textura, 0 es arriba
+
+                        if (pix_x < 0 || pix_x >= static_cast<int>(tex_width) ||
+                            pix_y < 0 || pix_y >= static_cast<int>(tex_height)) {
+                            continue;
+                        } //esto es para asegurarnos de que las coordenadas del pixel en la textura estén dentro de los límites de la textura, si no, no pintamos nada, esto es para evitar errores de acceso a memoria inválida
+
+                        Col color = colores[pix_y * tex_width + pix_x]; //obtenemos el color del pixel en la textura, usando las coordenadas que acabamos de calcular
+
+
+                        const Uint32 colorin = (255 << 24) | (color.r << 16) | (color.g << 8) | color.b; //esto es bit manipulation Uint tiene 32 bits, 8 para A,R,G,B, lo que hacemos es mandar 255 con << que es un shift left, osea, esos 8 bits,
+                        //se van a mover 24 posiciones a la izquierda, osea, van a quedar en la parte de A, luego r se mueve 16 posiciones, g se mueve 8 posiciones
+                        //y b se queda en la parte de B, luego hacemos un OR binario que es cada palito para juntar todito en un solo Uint32
+
+                        framebuffer[j * WIDTH + i] = colorin; //esto es para pintar el pixel, el framebuffer es un array de pixeles, y cada pixel es un Uint32, que es un entero de 32 bits, y cada bit representa un canal de color (RGBA)
+
+                    }
+                }
+            }
+        }
+    }
+
+
     void render_obj(Mesh const &mesh) {
+
+        std::vector<std::thread> threads_list; //la lista de threads que vamos a usar
+        std::vector<Triangulo> triangulos; //la lista de triangulos que vamos a rasterizar
 
         std::fill(framebuffer.begin(), framebuffer.end(), 0);//reiniciamos el framebuffer cada frame para no tener los pixeles del frame anterior, esto es importante para que no se queden los pixeles pintados de un frame a otro
         std::fill(zbuffer.begin(), zbuffer.end(), HUGE_VALF);//reiniciamos tambien el zbuffer por la misma razon
@@ -183,14 +236,27 @@ public:
                 Vec3 p3 = {real3.x, real3.y, ver3_clip.w};// no mandamos ndc.z porque este no contiene informacion de profundidad lineal real, que es la que necesitamos
 
                 static const std::vector<Col> empty_texture; //esto sirve para cuando no hay textura mandar esto y no matar el codigo con el nullptr
-                Rasterize(
-                    p1, p2, p3, uv1, uv2, uv3,
-                    mat ? mat->texture : empty_texture,
+
+                triangulos.push_back({p1,p2,p3,uv1,uv2,uv3,mat ? &mat->texture : &empty_texture,
                     mat ? mat->width : 0,
-                    mat ? mat->height : 0
-                );
+                    mat ? mat->height : 0}); //mandamos el triangulo a la lista de triangulos epicamente
+
             }
+
         }
+
+        for (auto& t : threads) {//mando la lista de triangulos con sus limites a cada threat
+
+            threads_list.push_back(std::thread(&Render::Rasterize_threads, this, std::ref(triangulos), t.x, t.y));
+            //creamos un thread para cada espacio definido en threads, y le pasamos los parametros necesarios para rasterizar ese espacio
+
+        }
+
+        for (auto& t : threads_list) { //espero a que todos corran para mandarlos al codigo
+            t.join();
+        }
+
+        triangulos.clear();
 
         SDL_UpdateTexture(texture, nullptr, framebuffer.data(), WIDTH * sizeof(Uint32)); //esto actualiza la textura con la info del framebuffer
         SDL_RenderTexture(renderer, texture, nullptr, nullptr); // esto dibuja la textura en el renderer, con nullptr para el source y el destination, lo que significa que se va a dibujar toda la textura en toda la ventana
