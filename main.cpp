@@ -27,9 +27,19 @@ int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el c
     Render renderizador(renderer,WIDTH,HEIGHT); //incializamos el render con la clase
 
     Mesh cubo_minecraft;
-    cubo_minecraft.load_obj("obj/Jeep_Renegade_2016_obj/Jeep_Renegade_2016.obj"); //cargamos el cubo de minecraft
+    Mesh carrito;
 
-    cubo_minecraft.transforms.translation.z = 5;
+    cubo_minecraft.load_obj("obj/cubo_mine/sin_nombre.obj"); //cargamos el cubo de minecraft
+    carrito.load_obj("obj/Jeep_Renegade_2016_obj/Jeep_Renegade_2016.obj"); //cargamos el carrito
+
+    std::vector<Mesh> meshes; //esto es para el caso de que queramos renderizar varios meshes, por ahora solo tenemos uno, pero asi se veria el codigo
+    meshes.push_back(carrito);
+    //meshes.push_back(cubo_minecraft);
+
+    meshes[0].transforms.translation.z = 5;
+    meshes[0].transforms.scale = 2;
+    meshes[0].transforms.translation.y  = -2;
+    //meshes[1].transforms.translation.z = 5;
 
     bool running = true;
     SDL_Event event;
@@ -39,14 +49,12 @@ int main(int argc, char* argv[]) { // aquí el argc(numero de argumentos) y el c
             if (event.type == SDL_EVENT_QUIT) running = false; //si cierras la ventana, running se vuelve falso
         }
 
-        cubo_minecraft.transforms.rotation.x = sinf(clock() * 0.0001f) * 5.f; //usamos el clock para hacer que el cubo rote, el clock devuelve el tiempo en milisegundos desde que se inició el programa, y lo multiplicamos por 0.001 para tenerlo en segundos, y luego por 0.5 para que la rotación sea más lenta
-        cubo_minecraft.transforms.rotation.y  = cosf(clock() * 0.0001f) * 5.f;
-        cubo_minecraft.transforms.rotation.z  = sinf(clock() * 0.0001f) * 5.f;
-        cubo_minecraft.transforms.scale = 1.0f * cosf(clock() * 0.001f)+1; //podemos usar el tiempo para hacer que el cubo escale también, pero por ahora lo dejamos fijo
+        meshes[0].transforms.rotation.y  = cosf(clock() * 0.0001f) * 5.f;
+        //meshes[1].transforms.rotation.y  = cosf(clock() * 0.0001f+0.5) * 5.f;
 
         SDL_RenderClear(renderer); // esto limpia el renderer, para que no se queden los pixeles del frame anterior
 
-        renderizador.render_obj(cubo_minecraft); //renderizamos el cubo, esto va a llenar el framebuffer con los pixeles que corresponden al cubo en su posición actual
+        renderizador.render_obj(meshes); //renderizamos el cubo, esto va a llenar el framebuffer con los pixeles que corresponden al cubo en su posición actual
 
         SDL_RenderPresent(renderer); // esto presenta el frame actual en pantalla
 

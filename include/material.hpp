@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <cstdint>
+#include "math.hpp"
 
 struct Col {
     int r, g, b;
@@ -15,6 +16,10 @@ public:
     std::string nombre;
     std::vector <Col> texture;
     uint32_t width, height;
+    float shininess; //que es Ns
+    Vec3 ambient; //Ka
+    Vec3 diffuse; //Kd
+    Vec3 specular; //Ks
 
     explicit Material(const std::string &nombre, const std::string &mtl, const std::string &base) : nombre(nombre) {
 
@@ -31,12 +36,53 @@ public:
             std::string line;
             std::string material;
 
+
             while(std::getline(file,line)) {//vamos linea por linea
 
                 std::istringstream iss(line);
                 std::string word;
 
                 iss >> word;
+
+                if (word == "Ns") {
+
+                    iss >> word;
+                    shininess = std::stof(word); //convertimos el string a float
+
+                }
+
+                if (word == "Ka") {
+
+                    iss >> word;
+                    ambient.x = std::stof(word);
+                    iss >> word;
+                    ambient.y = std::stof(word);
+                    iss >> word;
+                    ambient.z = std::stof(word);
+
+                }
+
+                if (word == "Kd") {
+
+                    iss >> word;
+                    diffuse.x = std::stof(word);
+                    iss >> word;
+                    diffuse.y = std::stof(word);
+                    iss >> word;
+                    diffuse.z = std::stof(word);
+
+                }
+
+                if (word == "Ks") {
+
+                    iss >> word;
+                    specular.x = std::stof(word);
+                    iss >> word;
+                    specular.y = std::stof(word);
+                    iss >> word;
+                    specular.z = std::stof(word);
+
+                }
 
                 if (word == "newmtl") {
 
