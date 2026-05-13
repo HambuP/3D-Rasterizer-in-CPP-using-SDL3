@@ -152,8 +152,8 @@ public:
                         float depth = e1_norm*(1/w3) + e2_norm*(1/w1) + e3_norm*(1/w2); //interpolamos la profundidad con correcta profundidad
                         depth = 1/depth;
 
-                        Vec3 normal = norA*e1_norm*(1/w3) + norB*e2_norm*(1/w1) + norC*e3_norm*(1/w2); //interpolamos la normal con interpolacion correcta por profundidad
-                        Vec3 real_p = realA * e1_norm*(1/w3) + realB * e2_norm*(1/w1) + realC * e3_norm*(1/w2); //interpolamos el punto en el espacio mundo 3d con interpolacion correcta por profundidad
+                        Vec3 normal = norC*e1_norm*(1/w3) + norA*e2_norm*(1/w1) + norB*e3_norm*(1/w2); //interpolamos la normal con interpolacion correcta por profundidad
+                        Vec3 real_p = realC * e1_norm*(1/w3) + realA * e2_norm*(1/w1) + realB * e3_norm*(1/w2); //interpolamos el punto en el espacio mundo 3d con interpolacion correcta por profundidad
                         Vec2 uv_coor = uvC*e1_norm*(1/w3) + uvA*e2_norm*(1/w1) + uvB*e3_norm*(1/w2); //interpolamos las coordenadas uv con interpolacion correcta por profundidad
 
                         uv_coor = uv_coor* depth; //volvemos a multiplicar por depth para que nos de bien
